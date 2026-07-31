@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>英語リスニング学習アプリ</title>
-    <!-- PWA用メタタグ -->
+    <title>英語リスニング学習アプリ (バックグラウンド対応)</title>
     <meta name="theme-color" content="#2563eb">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -39,7 +38,7 @@
 
     <main class="max-w-xl mx-auto p-4 space-y-4">
 
-        <!-- ホーム画面追加の案内モーダル（デフォルト非表示） -->
+        <!-- ホーム画面追加の案内モーダル -->
         <div id="install-modal" class="bg-blue-50 border border-blue-200 p-4 rounded-xl text-xs text-blue-900 hidden space-y-2">
             <div class="flex justify-between items-center font-bold">
                 <span>💡 ホーム画面への追加方法</span>
@@ -47,8 +46,8 @@
             </div>
             <p>このアプリをいつでもすぐ起動できるように、スマホのホーム画面に常駐させることができます。</p>
             <ul class="list-disc pl-4 space-y-1">
-                <li><strong>iPhone (Safari):</strong> 画面下部の共有ボタン（四角から矢印が出るアイコン）をタップ ＞ 「ホーム画面に追加」を選択。</li>
-                <li><strong>Android (Chrome):</strong> 画面右上のメニュー（点3つ）をタップ ＞ 「ホーム画面に追加」または「アプリをインストール」を選択。</li>
+                <li><strong>iPhone (Safari):</strong> 画面下部の共有ボタンをタップ ＞ 「ホーム画面に追加」を選択。</li>
+                <li><strong>Android (Chrome):</strong> 画面右上のメニューをタップ ＞ 「ホーム画面に追加」を選択。</li>
             </ul>
         </div>
 
@@ -57,12 +56,11 @@
             <div class="flex justify-between items-center mb-2">
                 <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">英文テキスト入力</h2>
                 <button id="paste-btn" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs px-2.5 py-1 rounded-md font-medium transition flex items-center space-x-1">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                     <span>クリップボードから貼付け</span>
                 </button>
             </div>
             <div class="space-y-3">
-                <textarea id="english-input" rows="5" class="w-full p-3 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="ここに英語のテキストを入力してください。文ごとに分割して読み上げます。"></textarea>
+                <textarea id="english-input" rows="5" class="w-full p-3 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="ここに英語のテキストを入力してください。"></textarea>
                 <button id="save-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg text-sm transition shadow-sm">
                     保存してスクリプトに反映
                 </button>
@@ -91,7 +89,7 @@
             </div>
         </section>
 
-        <!-- 3. 字幕表示エリア（スクリプト） -->
+        <!-- 3. 字幕表示エリア -->
         <section class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div class="p-3 bg-gray-100 border-b text-xs font-semibold text-gray-500 flex justify-between items-center">
                 <span>スクリプト（タップで選択）</span>
@@ -99,7 +97,7 @@
             </div>
             <div id="subtitles-container" class="p-4 space-y-3 max-h-[52vh] overflow-y-auto">
                 <div class="text-center text-gray-400 py-8 text-sm">
-                    「英文設定」から英文を入力してください。
+                    読み込み中...
                 </div>
             </div>
         </section>
@@ -117,11 +115,6 @@
                 <button id="prev-btn" class="p-2 text-gray-600 hover:text-blue-600 transition flex flex-col items-center" title="前の文へ">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
                     <span class="text-[10px] text-gray-400">前へ</span>
-                </button>
-
-                <button id="rewind-btn" class="flex items-center space-x-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs font-medium text-gray-700 transition" title="巻き戻し再生">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.333 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.333 4z"/></svg>
-                    <span>-3.5s</span>
                 </button>
 
                 <button id="stop-btn" class="p-2 text-gray-600 hover:text-red-600 transition flex flex-col items-center" title="停止">
@@ -149,6 +142,9 @@
         </div>
     </footer>
 
+    <!-- バックグラウンド維持用の隠しオーディオ要素 -->
+    <audio id="bg-audio" loop playsinline style="display:none;"></audio>
+
     <script>
         const defaultEnglish = `Hello and welcome to this English listening practice session. 
 Regular input is the key to improving your listening skills. 
@@ -174,52 +170,79 @@ Let's make this a daily habit for better fluency!`;
         const stopBtn = document.getElementById('stop-btn');
         const prevBtn = document.getElementById('prev-btn');
         const nextBtn = document.getElementById('next-btn');
-        const rewindBtn = document.getElementById('rewind-btn');
         const rateSelect = document.getElementById('rate-select');
         const progressBar = document.getElementById('progress-bar');
         const currentPositionLabel = document.getElementById('current-position-label');
 
         const toggleEng = document.getElementById('toggle-eng');
         const loopOne = document.getElementById('loop-one');
+        const bgAudio = document.getElementById('bg-audio');
 
         let sentences = [];
         let currentIndex = 0;
         let isPlaying = false;
         let currentUtterance = null;
+        let silentAudioUrl = "";
 
-        // 初期設定
+        // 無音の短いWAVデータを生成（バックグラウンドでオーディオセッションを維持するため）
+        function createSilentAudio() {
+            const sampleRate = 8000;
+            const numChannels = 1;
+            const bitsPerSample = 16;
+            const blockAlign = (numChannels * bitsPerSample) / 8;
+            const byteRate = sampleRate * blockAlign;
+            const dataSize = sampleRate * blockAlign * 1; // 1秒の無音
+            const buffer = new ArrayBuffer(44 + dataSize);
+            const view = new DataView(buffer);
+
+            function writeString(view, offset, string) {
+                for (let i = 0; i < string.length; i++) {
+                    view.setUint8(offset + i, string.charCodeAt(i));
+                }
+            }
+
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + dataSize, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, numChannels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, byteRate, true);
+            view.setUint16(32, blockAlign, true);
+            view.setUint16(34, bitsPerSample, true);
+            writeString(view, 36, 'data');
+            view.setUint32(40, dataSize, true);
+
+            const blob = new Blob([view], { type: 'audio/wav' });
+            silentAudioUrl = URL.createObjectURL(blob);
+            bgAudio.src = silentAudioUrl;
+        }
+
+        createSilentAudio();
+
+        // 初期化
         englishInput.value = localStorage.getItem('listening_eng') || defaultEnglish;
         parseAndRender();
 
-        // 案内モーダルの表示切替
-        installGuideBtn.addEventListener('click', () => {
-            installModal.classList.toggle('hidden');
-        });
-        closeModalBtn.addEventListener('click', () => {
-            installModal.classList.add('hidden');
-        });
-
-        // 英文テキスト設定の表示切替
+        installGuideBtn.addEventListener('click', () => { installModal.classList.toggle('hidden'); });
+        closeModalBtn.addEventListener('click', () => { installModal.classList.add('hidden'); });
         toggleInputBtn.addEventListener('click', () => {
             inputSection.classList.toggle('hidden');
             installModal.classList.add('hidden');
         });
 
-        // クリップボードから貼付けボタン
         pasteBtn.addEventListener('click', async () => {
             try {
                 const text = await navigator.clipboard.readText();
-                if (text) {
-                    englishInput.value = text;
-                } else {
-                    alert('クリップボードにテキストがありません。');
-                }
+                if (text) { englishInput.value = text; } 
+                else { alert('クリップボードにテキストがありません。'); }
             } catch (err) {
-                alert('クリップボードへのアクセスが許可されていないか、サポートされていません。テキストエリアを長押しして直接ペーストしてください。');
+                alert('クリップボードへのアクセスが許可されていないか、サポートされていません。');
             }
         });
 
-        // 保存ボタン
         saveBtn.addEventListener('click', () => {
             localStorage.setItem('listening_eng', englishInput.value);
             parseAndRender();
@@ -227,10 +250,8 @@ Let's make this a daily habit for better fluency!`;
             stopAudio();
         });
 
-        // 英文を文単位に分割してレンダリング
         function parseAndRender() {
             const engText = englishInput.value.trim();
-
             sentences = engText ? engText.match(/[^.!?\n]+[.!?\n]*/g) || [engText] : [];
             sentences = sentences.map(s => s.trim()).filter(s => s.length > 0);
 
@@ -251,12 +272,10 @@ Let's make this a daily habit for better fluency!`;
                 engP.textContent = sent;
 
                 div.appendChild(engP);
-
                 div.addEventListener('click', () => {
                     currentIndex = idx;
                     playSentence(currentIndex);
                 });
-
                 subtitlesContainer.appendChild(div);
             });
 
@@ -264,14 +283,13 @@ Let's make this a daily habit for better fluency!`;
             updateProgress();
         }
 
-        // 英文表示切替
         toggleEng.addEventListener('change', () => {
             document.querySelectorAll('.eng-text').forEach(el => {
                 el.classList.toggle('hidden', !toggleEng.checked);
             });
         });
 
-        // 音声再生の制御
+        // 音声再生の制御（Web Speech APIとバックグラウンド維持用オーディオを連携）
         function playSentence(index) {
             if (index < 0 || index >= sentences.length) {
                 stopAudio();
@@ -281,6 +299,9 @@ Let's make this a daily habit for better fluency!`;
             window.speechSynthesis.cancel();
             currentIndex = index;
             updateHighlight();
+
+            // iOSなどのバックグラウンド制限を突破するため、無音オーディオを裏で再生状態にする
+            bgAudio.play().catch(() => {});
 
             const textToSpeak = sentences[currentIndex];
             currentUtterance = new SpeechSynthesisUtterance(textToSpeak);
@@ -333,6 +354,7 @@ Let's make this a daily habit for better fluency!`;
 
         function stopAudio() {
             window.speechSynthesis.cancel();
+            bgAudio.pause();
             isPlaying = false;
             updatePlayButtonState();
         }
@@ -349,17 +371,18 @@ Let's make this a daily habit for better fluency!`;
             }
         }
 
-        // 再生/一時停止ボタン
         mainPlayPauseBtn.addEventListener('click', () => {
             if (sentences.length === 0) return;
 
             if (isPlaying) {
                 window.speechSynthesis.pause();
+                bgAudio.pause();
                 isPlaying = false;
                 updatePlayButtonState();
             } else {
                 if (window.speechSynthesis.paused) {
                     window.speechSynthesis.resume();
+                    bgAudio.play().catch(() => {});
                     isPlaying = true;
                     updatePlayButtonState();
                 } else {
@@ -396,11 +419,6 @@ Let's make this a daily habit for better fluency!`;
             }
         });
 
-        rewindBtn.addEventListener('click', () => {
-            if (sentences.length === 0) return;
-            playSentence(currentIndex);
-        });
-
         progressBar.addEventListener('input', (e) => {
             if (sentences.length === 0) return;
             const val = e.target.value;
@@ -415,4 +433,3 @@ Let's make this a daily habit for better fluency!`;
     </script>
 </body>
 </html>
-
