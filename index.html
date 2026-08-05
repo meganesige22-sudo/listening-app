@@ -48,19 +48,19 @@
 <body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col justify-between selection:bg-blue-200">
 
     <!-- ヘッダー -->
-    <header class="bg-blue-600 text-white shadow-md sticky top-0 z-20">
+    <header class="bg-amber-400 text-slate-900 shadow-md sticky top-0 z-20">
         <div class="max-w-xl mx-auto px-4 py-3 flex justify-between items-center">
             <div class="flex items-center space-x-2">
-                <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center font-bold text-white text-base">
+                <div class="w-8 h-8 rounded-lg bg-white/40 flex items-center justify-center font-bold text-slate-900 text-base">
                     🎧
                 </div>
-                <h1 class="text-lg font-bold tracking-tight">Listening Study</h1>
+                <h1 class="text-lg font-bold tracking-tight">Listening Study EX</h1>
             </div>
             <div class="flex items-center space-x-2">
-                <button id="install-guide-btn" class="bg-white/10 hover:bg-white/20 active:bg-white/30 text-xs px-2.5 py-1.5 rounded-lg font-medium transition backdrop-blur-sm flex items-center space-x-1">
-                    <span>📱 ホーム追加</span>
+                <button id="monthly-stats-btn" class="bg-black/10 hover:bg-black/20 active:bg-black/30 text-xs px-2.5 py-1.5 rounded-lg font-medium transition backdrop-blur-sm flex items-center space-x-1">
+                    <span>⏱️ 今月の再生時間</span>
                 </button>
-                <button id="toggle-input-btn" class="bg-white text-blue-600 hover:bg-blue-50 font-semibold text-xs px-3 py-1.5 rounded-lg transition shadow-sm">
+                <button id="toggle-input-btn" class="bg-white text-slate-900 hover:bg-amber-50 font-semibold text-xs px-3 py-1.5 rounded-lg transition shadow-sm">
                     英文設定
                 </button>
             </div>
@@ -69,20 +69,24 @@
 
     <main class="max-w-xl mx-auto w-full p-4 space-y-4 flex-1">
 
-        <!-- ホーム画面追加の案内モーダル -->
-        <div id="install-modal" class="bg-blue-50 border border-blue-200 p-4 rounded-2xl text-xs text-blue-900 hidden space-y-2 shadow-sm animate-fade-in">
+        <!-- 今月の再生時間モーダル -->
+        <div id="monthly-stats-modal" class="bg-blue-50 border border-blue-200 p-4 rounded-2xl text-xs text-blue-900 hidden space-y-3 shadow-sm animate-fade-in">
             <div class="flex justify-between items-center font-bold text-sm">
                 <span class="flex items-center space-x-1">
-                    <span>💡</span>
-                    <span>ホーム画面への追加方法</span>
+                    <span>⏱️</span>
+                    <span id="modal-title-month">今月の再生時間 (上限 18時間)</span>
                 </span>
-                <button id="close-modal-btn" class="text-blue-400 hover:text-blue-700 w-6 h-6 flex items-center justify-center text-lg rounded-full">✕</button>
+                <button id="close-monthly-modal-btn" class="text-blue-400 hover:text-blue-700 w-6 h-6 flex items-center justify-center text-lg rounded-full">✕</button>
             </div>
-            <p class="text-blue-800 leading-relaxed">アプリ感覚ですぐ起動できるようにスマホのホーム画面に追加できます。</p>
-            <ul class="list-disc pl-5 space-y-1 text-blue-800">
-                <li><strong>iPhone (Safari):</strong> 画面下の共有ボタン ➔ 「ホーム画面に追加」</li>
-                <li><strong>Android (Chrome):</strong> 画面右上のメニュー ➔ 「ホーム画面に追加」</li>
-            </ul>
+            <div class="bg-white p-3 rounded-xl border border-blue-100 flex flex-col items-center justify-center space-y-1">
+                <span id="monthly-hours-display" class="text-2xl font-bold text-blue-600 font-mono">0.00 / 18.00 時間</span>
+                <span id="monthly-detailed-display" class="text-slate-500 text-[11px]">（合計: 0分 / 上限: 1080分）</span>
+            </div>
+            <!-- プログレスバー（18時間に対する割合） -->
+            <div class="w-full bg-blue-100 rounded-full h-2 overflow-hidden">
+                <div id="limit-progress-bar" class="bg-blue-600 h-full rounded-full transition-all duration-300" style="width: 0%;"></div>
+            </div>
+            <p id="limit-notice-text" class="text-blue-800 text-[11px] leading-relaxed text-center">※今月の再生時間は最大18時間まで計測されます。</p>
         </div>
 
         <!-- 英文入力エリア -->
@@ -175,7 +179,7 @@
                             <option value="1.5">1.5x</option>
                             <option value="2">2.0x</option>
                         </select>
-                        <span class="text-[10px] text-slate-400 mt-0.5">再生速度</span>
+                        <span class="text-[10px] text-slate-400 mt-0.5">再生時間記録対応</span>
                     </div>
                 </div>
 
@@ -195,15 +199,26 @@ Try to follow the subtitles as you listen to each sentence.
 You can adjust the playback speed, repeat sentences, and review comfortably.
 Let's make this a daily habit for better fluency!`;
 
+        // 上限時間（18時間 = 64800秒）
+        const MAX_PLAY_SECONDS = 18 * 3600;
+
         // DOM要素の参照
         const englishInput = document.getElementById('english-input');
         const saveBtn = document.getElementById('save-btn');
         const pasteBtn = document.getElementById('paste-btn');
         const inputSection = document.getElementById('input-section');
         const toggleInputBtn = document.getElementById('toggle-input-btn');
-        const installGuideBtn = document.getElementById('install-guide-btn');
-        const installModal = document.getElementById('install-modal');
-        const closeModalBtn = document.getElementById('close-modal-btn');
+        
+        // 今月の再生時間関連
+        const monthlyStatsBtn = document.getElementById('monthly-stats-btn');
+        const monthlyStatsModal = document.getElementById('monthly-stats-modal');
+        const closeMonthlyModalBtn = document.getElementById('close-monthly-modal-btn');
+        const modalTitleMonth = document.getElementById('modal-title-month');
+        const monthlyHoursDisplay = document.getElementById('monthly-hours-display');
+        const monthlyDetailedDisplay = document.getElementById('monthly-detailed-display');
+        const limitProgressBar = document.getElementById('limit-progress-bar');
+        const limitNoticeText = document.getElementById('limit-notice-text');
+
         const subtitlesContainer = document.getElementById('subtitles-container');
         
         const playPauseBtn = document.getElementById('play-pause-btn');
@@ -221,30 +236,109 @@ Let's make this a daily habit for better fluency!`;
 
         // 状態変数
         let sentences = [];
-        let sentenceDurations = []; // 各文の推定秒数
-        let cumulativeDurations = []; // 累積時間
-        let totalEstimatedTime = 0; // 全体の推定秒数
+        let sentenceDurations = [];
+        let cumulativeDurations = [];
+        let totalEstimatedTime = 0;
 
         let currentIndex = 0;
         let isPlaying = false;
-        let audioCache = {}; // 取得した音声のキャッシュ
+        let audioCache = {};
 
         // タイマー・時間計測用
         let timerInterval = null;
         let sentenceStartTime = 0;
         let elapsedBeforeCurrent = 0;
 
+        // 再生時間計測の蓄積管理（秒単位の加算）
+        let playTimeAccumulator = 0;
+
         // 初期化処理
         englishInput.value = localStorage.getItem('listening_eng') || defaultEnglish;
         parseAndRender();
 
         // イベントリスナー設定
-        installGuideBtn.addEventListener('click', () => { installModal.classList.toggle('hidden'); });
-        closeModalBtn.addEventListener('click', () => { installModal.classList.add('hidden'); });
+        monthlyStatsBtn.addEventListener('click', () => {
+            updateMonthlyStatsDisplay();
+            monthlyStatsModal.classList.toggle('hidden');
+        });
+        closeMonthlyModalBtn.addEventListener('click', () => { monthlyStatsModal.classList.add('hidden'); });
+        
         toggleInputBtn.addEventListener('click', () => {
             inputSection.classList.toggle('hidden');
-            installModal.classList.add('hidden');
+            monthlyStatsModal.classList.add('hidden');
         });
+
+        // 定期的に再生時間をLocal Storageへ保存する機構（上限18時間を超えないように制御）
+        setInterval(() => {
+            if (isPlaying) {
+                const key = getCurrentYearMonthKey();
+                const currentTotalSeconds = parseInt(localStorage.getItem(key) || '0', 10);
+                
+                // すでに18時間に達している場合は再生時間を加算せず一時停止する
+                if (currentTotalSeconds + playTimeAccumulator >= MAX_PLAY_SECONDS) {
+                    stopAudio();
+                    showNotice('今月の再生時間が上限の18時間に達しました');
+                    updateMonthlyStatsDisplay();
+                    return;
+                }
+
+                playTimeAccumulator += 1;
+                if (playTimeAccumulator >= 5) {
+                    savePlayTimeToLocalStorage(playTimeAccumulator);
+                    playTimeAccumulator = 0;
+                }
+            }
+        }, 1000);
+
+        window.addEventListener('beforeunload', () => {
+            if (playTimeAccumulator > 0) {
+                savePlayTimeToLocalStorage(playTimeAccumulator);
+                playTimeAccumulator = 0;
+            }
+        });
+
+        function getCurrentYearMonthKey() {
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            return `listening_play_time_${y}-${m}`;
+        }
+
+        function savePlayTimeToLocalStorage(seconds) {
+            const key = getCurrentYearMonthKey();
+            const currentTotalSeconds = parseInt(localStorage.getItem(key) || '0', 10);
+            const newTotal = Math.min(MAX_PLAY_SECONDS, currentTotalSeconds + seconds);
+            localStorage.setItem(key, newTotal);
+        }
+
+        function updateMonthlyStatsDisplay() {
+            const key = getCurrentYearMonthKey();
+            const totalSeconds = Math.min(MAX_PLAY_SECONDS, parseInt(localStorage.getItem(key) || '0', 10) + playTimeAccumulator);
+            
+            const now = new Date();
+            modalTitleMonth.textContent = `${now.getFullYear()}年${now.getMonth() + 1}月の再生時間 (上限 18時間)`;
+
+            const hours = (totalSeconds / 3600).toFixed(2);
+            const minutes = Math.floor(totalSeconds / 60);
+            const maxMinutes = Math.floor(MAX_PLAY_SECONDS / 60);
+
+            monthlyHoursDisplay.textContent = `${hours} / 18.00 時間`;
+            monthlyDetailedDisplay.textContent = `（合計: ${minutes}分 / 上限: ${maxMinutes}分）`;
+
+            // プログレスバーの割合を計算（最大18時間）
+            const percentage = Math.min(100, (totalSeconds / MAX_PLAY_SECONDS) * 100);
+            limitProgressBar.style.width = `${percentage}%`;
+
+            if (totalSeconds >= MAX_PLAY_SECONDS) {
+                limitProgressBar.classList.remove('bg-blue-600');
+                limitProgressBar.classList.add('bg-amber-500');
+                limitNoticeText.textContent = '⚠️ 今月の再生時間が上限（18時間）に達しました。';
+            } else {
+                limitProgressBar.classList.remove('bg-amber-500');
+                limitProgressBar.classList.add('bg-blue-600');
+                limitNoticeText.textContent = `※今月の再生時間は最大18時間まで計測されます（残り ${(18 - (totalSeconds / 3600)).toFixed(2)} 時間）。`;
+            }
+        }
 
         pasteBtn.addEventListener('click', async () => {
             try {
@@ -265,7 +359,7 @@ Let's make this a daily habit for better fluency!`;
 
         saveBtn.addEventListener('click', () => {
             localStorage.setItem('listening_eng', englishInput.value);
-            audioCache = {}; // キャッシュのクリア
+            audioCache = {};
             parseAndRender();
             inputSection.classList.add('hidden');
             stopAudio();
@@ -282,7 +376,6 @@ Let's make this a daily habit for better fluency!`;
             }, 2000);
         }
 
-        // 秒数を mm:ss フォーマットに変換する関数
         function formatTime(seconds) {
             const sec = Math.max(0, Math.floor(seconds));
             const m = Math.floor(sec / 60);
@@ -357,7 +450,6 @@ Let's make this a daily habit for better fluency!`;
             updateProgress();
             updateTimerDisplay();
 
-            // スクリプト読み込み時に先頭2文をバックグラウンドでプリロードしておく
             preloadAhead(0);
         }
 
@@ -386,7 +478,6 @@ Let's make this a daily habit for better fluency!`;
             timeDisplay.textContent = `${formatTime(currentTotalElapsed)} / ${formatTime(totalEstimatedTime)}`;
         }
 
-        // 次の文の音声をバックグラウンドで事前取得（プリロード）する関数
         function preloadAhead(fromIndex) {
             const currentRate = parseFloat(rateSelect.value);
             [fromIndex, fromIndex + 1, fromIndex + 2].forEach(idx => {
@@ -464,6 +555,15 @@ Let's make this a daily habit for better fluency!`;
         }
 
         async function playSentence(index) {
+            // 再生開始前に上限（18時間）に達していないかチェック
+            const key = getCurrentYearMonthKey();
+            const currentTotalSeconds = parseInt(localStorage.getItem(key) || '0', 10);
+            if (currentTotalSeconds >= MAX_PLAY_SECONDS) {
+                showNotice('今月の再生時間が上限の18時間に達しています');
+                updateMonthlyStatsDisplay();
+                return;
+            }
+
             if (index < 0 || index >= sentences.length) {
                 stopAudio();
                 return;
@@ -476,7 +576,6 @@ Let's make this a daily habit for better fluency!`;
             isPlaying = true;
             updatePlayButtonState();
 
-            // 現在再生を開始した直後に、次の2文をバックグラウンドで先読み開始
             preloadAhead(currentIndex + 1);
 
             const textToSpeak = sentences[currentIndex];
@@ -617,6 +716,11 @@ Let's make this a daily habit for better fluency!`;
         }
 
         function stopAudio() {
+            if (playTimeAccumulator > 0) {
+                savePlayTimeToLocalStorage(playTimeAccumulator);
+                playTimeAccumulator = 0;
+            }
+
             window.speechSynthesis.cancel();
             audioPlayer.pause();
             audioPlayer.currentTime = 0;
@@ -635,7 +739,6 @@ Let's make this a daily habit for better fluency!`;
             }
         }
 
-        // ボタンイベント
         playPauseBtn.addEventListener('click', () => {
             if (sentences.length === 0) return;
 
@@ -681,7 +784,7 @@ Let's make this a daily habit for better fluency!`;
         });
 
         rateSelect.addEventListener('change', () => {
-            audioCache = {}; // 速度変更時はキャッシュをクリア
+            audioCache = {};
             calculateDurations();
             if (isPlaying) {
                 playSentence(currentIndex);
