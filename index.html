@@ -26,7 +26,6 @@
             background-color: #eff6ff; /* blue-50 */
             border-color: #3b82f6; /* blue-500 */
             box-shadow: 0 4px 12px -2px rgba(59, 130, 246, 0.15);
-            transform: scale(1.01);
         }
 
         /* 英文目隠し（ブラインド）効果用スタイル */
@@ -135,23 +134,7 @@
                     <span>スクリプト</span>
                 </div>
                 
-                <!-- 英文の表示 / 目隠しトグルボタン -->
-                <div class="flex items-center space-x-2">
-                    <button id="toggle-mask-btn" class="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium transition shadow-xs bg-white text-slate-700 border-slate-200 hover:bg-slate-100" title="英文の表示・目隠しを切り替えます">
-                        <span id="mask-icon" class="text-sm">👁️</span>
-                        <span id="mask-label">英文を隠す</span>
-                    </button>
-                    <span id="current-position-label" class="bg-slate-200/70 text-slate-600 font-mono px-2 py-0.5 rounded-full text-[11px]">0 / 0</span>
-                </div>
-            </div>
-
-            <!-- 目隠しモード時の案内バナー（非表示時は隠れる） -->
-            <div id="blind-mode-tip" class="bg-amber-50/90 border-b border-amber-100/80 px-3 py-1.5 text-[11px] text-amber-800 flex items-center justify-between hidden">
-                <span class="flex items-center space-x-1">
-                    <span>🙈</span>
-                    <span>目隠し中: カード右の「👁️」を押すとその文だけ確認できます</span>
-                </span>
-                <button id="close-blind-tip" class="text-amber-500 hover:text-amber-700 font-bold px-1">✕</button>
+                <span id="current-position-label" class="bg-slate-200/70 text-slate-600 font-mono px-2 py-0.5 rounded-full text-[11px]">0 / 0</span>
             </div>
 
             <div id="subtitles-container" class="p-3 space-y-2.5 overflow-y-auto flex-1 scroll-smooth">
@@ -176,10 +159,16 @@
             </div>
 
             <!-- メインコントローラー -->
-            <div class="flex items-center justify-around px-2 pt-1">
+            <div class="flex items-center justify-between px-2 pt-1">
                 
-                <!-- 制御ボタン群 -->
-                <div class="flex items-center space-x-6">
+                <!-- 英文 目隠しトグルボタン（親指で押しやすい左側に配置） -->
+                <button id="toggle-mask-btn" class="p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:text-blue-600 active:scale-95 transition flex flex-col items-center bg-slate-50 min-w-[48px]" title="英文の表示・目隠し">
+                    <span id="mask-icon" class="text-lg leading-none">👁️</span>
+                    <span id="mask-label" class="text-[9px] font-medium text-slate-500 mt-1">隠す</span>
+                </button>
+
+                <!-- 再生制御ボタン群 -->
+                <div class="flex items-center space-x-5">
                     <!-- 前へ -->
                     <button id="prev-btn" class="p-2.5 text-slate-600 hover:text-blue-600 active:scale-95 transition flex flex-col items-center" title="前の文へ">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
@@ -254,8 +243,6 @@ Let's make this a daily habit for better fluency!`;
         const toggleMaskBtn = document.getElementById('toggle-mask-btn');
         const maskIcon = document.getElementById('mask-icon');
         const maskLabel = document.getElementById('mask-label');
-        const blindModeTip = document.getElementById('blind-mode-tip');
-        const closeBlindTip = document.getElementById('close-blind-tip');
 
         const subtitlesContainer = document.getElementById('subtitles-container');
         
@@ -298,16 +285,14 @@ Let's make this a daily habit for better fluency!`;
         function updateMaskModeUI() {
             if (isMasked) {
                 maskIcon.textContent = '🙈';
-                maskLabel.textContent = '英文を表示';
-                toggleMaskBtn.classList.remove('bg-white', 'text-slate-700', 'border-slate-200');
+                maskLabel.textContent = '表示';
+                toggleMaskBtn.classList.remove('bg-slate-50', 'text-slate-600', 'border-slate-200');
                 toggleMaskBtn.classList.add('bg-amber-100', 'text-amber-900', 'border-amber-300');
-                blindModeTip.classList.remove('hidden');
             } else {
                 maskIcon.textContent = '👁️';
-                maskLabel.textContent = '英文を隠す';
+                maskLabel.textContent = '隠す';
                 toggleMaskBtn.classList.remove('bg-amber-100', 'text-amber-900', 'border-amber-300');
-                toggleMaskBtn.classList.add('bg-white', 'text-slate-700', 'border-slate-200');
-                blindModeTip.classList.add('hidden');
+                toggleMaskBtn.classList.add('bg-slate-50', 'text-slate-600', 'border-slate-200');
             }
 
             // 全ての文カードに対してマスククラスを適用/解除
@@ -333,11 +318,6 @@ Let's make this a daily habit for better fluency!`;
             isMasked = !isMasked;
             localStorage.setItem('listening_mask_mode', isMasked);
             updateMaskModeUI();
-            showNotice(isMasked ? '英文を目隠ししました（耳に集中できます）' : '英文を表示しました');
-        });
-
-        closeBlindTip.addEventListener('click', () => {
-            blindModeTip.classList.add('hidden');
         });
 
         // 初期化処理
@@ -802,18 +782,8 @@ Let's make this a daily habit for better fluency!`;
         }
 
         function scrollContainerToActiveItem(activeItem) {
-            if (!activeItem || !subtitlesContainer) return;
-
-            const containerHeight = subtitlesContainer.clientHeight;
-            const itemTop = activeItem.offsetTop - subtitlesContainer.offsetTop;
-            const itemHeight = activeItem.clientHeight;
-
-            const targetScrollTop = itemTop - (containerHeight / 2) + (itemHeight / 2);
-
-            subtitlesContainer.scrollTo({
-                top: Math.max(0, targetScrollTop),
-                behavior: 'smooth'
-            });
+            // 画面の自動移動（スクロール）を行わないよう固定
+            return;
         }
 
         function updateHighlight() {
@@ -829,10 +799,7 @@ Let's make this a daily habit for better fluency!`;
                 }
             });
 
-            if (activeElement) {
-                scrollContainerToActiveItem(activeElement);
-            }
-
+            // 自動スクロールは行わず、表示の変更のみ反映
             currentPositionLabel.textContent = `${currentIndex + 1} / ${sentences.length}`;
             updateProgress();
             updateTimerDisplay();
