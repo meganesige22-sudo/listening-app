@@ -128,7 +128,7 @@
                 <span id="current-position-label" class="bg-slate-200/70 text-slate-600 font-mono px-2 py-0.5 rounded-full text-[11px]">0 / 0</span>
             </div>
 
-            <div id="subtitles-container" class="p-3 space-y-2.5 overflow-y-auto flex-1">
+            <div id="subtitles-container" class="p-3 space-y-2.5 overflow-y-auto flex-1 scroll-smooth">
                 <div class="text-center text-slate-400 py-12 text-sm">
                     読み込み中...
                 </div>
@@ -737,18 +737,38 @@ Let's make this a daily habit for better fluency!`;
             }
         }
 
+        function scrollContainerToActiveItem(activeItem) {
+            if (!activeItem || !subtitlesContainer) return;
+
+            const containerHeight = subtitlesContainer.clientHeight;
+            const itemTop = activeItem.offsetTop - subtitlesContainer.offsetTop;
+            const itemHeight = activeItem.clientHeight;
+
+            const targetScrollTop = itemTop - (containerHeight / 2) + (itemHeight / 2);
+
+            subtitlesContainer.scrollTo({
+                top: Math.max(0, targetScrollTop),
+                behavior: 'smooth'
+            });
+        }
+
         function updateHighlight() {
             const items = subtitlesContainer.querySelectorAll('.sentence-card');
+            let activeElement = null;
 
             items.forEach((item, idx) => {
                 if (idx === currentIndex) {
                     item.classList.add('active');
+                    activeElement = item;
                 } else {
                     item.classList.remove('active');
                 }
             });
 
-            // 画面スクロールは一切行わず、表示値のみ更新
+            if (activeElement) {
+                scrollContainerToActiveItem(activeElement);
+            }
+
             currentPositionLabel.textContent = `${currentIndex + 1} / ${sentences.length}`;
             updateProgress();
             updateTimerDisplay();
