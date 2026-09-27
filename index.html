@@ -29,6 +29,21 @@
             transform: scale(1.01);
         }
 
+        /* 英文目隠し（ブラインド）効果用スタイル */
+        .sentence-text.masked {
+            filter: blur(8px);
+            opacity: 0.18;
+            user-select: none;
+            transition: filter 0.2s ease, opacity 0.2s ease;
+        }
+
+        /* 個別で開いた英文のスタイル */
+        .sentence-text.revealed {
+            filter: none !important;
+            opacity: 1 !important;
+            user-select: text !important;
+        }
+
         #subtitles-container::-webkit-scrollbar {
             width: 6px;
         }
@@ -70,7 +85,7 @@
     <main class="max-w-xl mx-auto w-full p-4 space-y-4 flex-1">
 
         <!-- 今月の再生時間モーダル -->
-        <div id="monthly-stats-modal" class="bg-blue-50 border border-blue-200 p-4 rounded-2xl text-xs text-blue-900 hidden space-y-3 shadow-sm animate-fade-in">
+        <div id="monthly-stats-modal" class="bg-blue-50 border border-blue-200 p-4 rounded-2xl text-xs text-blue-900 hidden space-y-3 shadow-sm">
             <div class="flex justify-between items-center font-bold text-sm">
                 <span class="flex items-center space-x-1">
                     <span>⏱️</span>
@@ -114,15 +129,31 @@
 
         <!-- 字幕表示エリア -->
         <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden flex flex-col" style="height: calc(100vh - 290px); min-height: 380px;">
-            <div class="px-4 py-3 bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500 flex justify-between items-center shrink-0">
-                <span class="flex items-center space-x-1.5">
+            <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-600 flex justify-between items-center shrink-0">
+                <div class="flex items-center space-x-1.5">
                     <span class="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>
-                    <span>スクリプト（タップで再生）</span>
-                </span>
+                    <span>スクリプト</span>
+                </div>
+                
+                <!-- 英文の表示 / 目隠しトグルボタン -->
                 <div class="flex items-center space-x-2">
+                    <button id="toggle-mask-btn" class="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium transition shadow-xs bg-white text-slate-700 border-slate-200 hover:bg-slate-100" title="英文の表示・目隠しを切り替えます">
+                        <span id="mask-icon" class="text-sm">👁️</span>
+                        <span id="mask-label">英文を隠す</span>
+                    </button>
                     <span id="current-position-label" class="bg-slate-200/70 text-slate-600 font-mono px-2 py-0.5 rounded-full text-[11px]">0 / 0</span>
                 </div>
             </div>
+
+            <!-- 目隠しモード時の案内バナー（非表示時は隠れる） -->
+            <div id="blind-mode-tip" class="bg-amber-50/90 border-b border-amber-100/80 px-3 py-1.5 text-[11px] text-amber-800 flex items-center justify-between hidden">
+                <span class="flex items-center space-x-1">
+                    <span>🙈</span>
+                    <span>目隠し中: カード右の「👁️」を押すとその文だけ確認できます</span>
+                </span>
+                <button id="close-blind-tip" class="text-amber-500 hover:text-amber-700 font-bold px-1">✕</button>
+            </div>
+
             <div id="subtitles-container" class="p-3 space-y-2.5 overflow-y-auto flex-1 scroll-smooth">
                 <div class="text-center text-slate-400 py-12 text-sm">
                     読み込み中...
@@ -179,7 +210,7 @@
                             <option value="1.5">1.5x</option>
                             <option value="2">2.0x</option>
                         </select>
-                        <span class="text-[10px] text-slate-400 mt-0.5">再生時間記録対応</span>
+                        <span class="text-[10px] text-slate-400 mt-0.5">再生速度</span>
                     </div>
                 </div>
 
@@ -219,6 +250,13 @@ Let's make this a daily habit for better fluency!`;
         const limitProgressBar = document.getElementById('limit-progress-bar');
         const limitNoticeText = document.getElementById('limit-notice-text');
 
+        // 目隠し（ブラインド）機能関連の参照
+        const toggleMaskBtn = document.getElementById('toggle-mask-btn');
+        const maskIcon = document.getElementById('mask-icon');
+        const maskLabel = document.getElementById('mask-label');
+        const blindModeTip = document.getElementById('blind-mode-tip');
+        const closeBlindTip = document.getElementById('close-blind-tip');
+
         const subtitlesContainer = document.getElementById('subtitles-container');
         
         const playPauseBtn = document.getElementById('play-pause-btn');
@@ -243,6 +281,10 @@ Let's make this a daily habit for better fluency!`;
         let currentIndex = 0;
         let isPlaying = false;
         let audioCache = {};
+        let playRequestId = 0; // 重複再生ガード
+
+        // 目隠しモード状態（localStorageに保存）
+        let isMasked = localStorage.getItem('listening_mask_mode') === 'true';
 
         // タイマー・時間計測用
         let timerInterval = null;
@@ -252,9 +294,56 @@ Let's make this a daily habit for better fluency!`;
         // 再生時間計測の蓄積管理（秒単位の加算）
         let playTimeAccumulator = 0;
 
+        // 目隠しモードUIの同期
+        function updateMaskModeUI() {
+            if (isMasked) {
+                maskIcon.textContent = '🙈';
+                maskLabel.textContent = '英文を表示';
+                toggleMaskBtn.classList.remove('bg-white', 'text-slate-700', 'border-slate-200');
+                toggleMaskBtn.classList.add('bg-amber-100', 'text-amber-900', 'border-amber-300');
+                blindModeTip.classList.remove('hidden');
+            } else {
+                maskIcon.textContent = '👁️';
+                maskLabel.textContent = '英文を隠す';
+                toggleMaskBtn.classList.remove('bg-amber-100', 'text-amber-900', 'border-amber-300');
+                toggleMaskBtn.classList.add('bg-white', 'text-slate-700', 'border-slate-200');
+                blindModeTip.classList.add('hidden');
+            }
+
+            // 全ての文カードに対してマスククラスを適用/解除
+            const textElements = subtitlesContainer.querySelectorAll('.sentence-text');
+            textElements.forEach(el => {
+                if (isMasked) {
+                    el.classList.add('masked');
+                    el.classList.remove('revealed');
+                } else {
+                    el.classList.remove('masked');
+                    el.classList.remove('revealed');
+                }
+            });
+
+            // カード内の個別トグルボタンの表示制御
+            const peekButtons = subtitlesContainer.querySelectorAll('.peek-btn');
+            peekButtons.forEach(btn => {
+                btn.style.display = isMasked ? 'inline-flex' : 'none';
+            });
+        }
+
+        toggleMaskBtn.addEventListener('click', () => {
+            isMasked = !isMasked;
+            localStorage.setItem('listening_mask_mode', isMasked);
+            updateMaskModeUI();
+            showNotice(isMasked ? '英文を目隠ししました（耳に集中できます）' : '英文を表示しました');
+        });
+
+        closeBlindTip.addEventListener('click', () => {
+            blindModeTip.classList.add('hidden');
+        });
+
         // 初期化処理
         englishInput.value = localStorage.getItem('listening_eng') || defaultEnglish;
         parseAndRender();
+        initMediaSessionHandlers();
 
         // イベントリスナー設定
         monthlyStatsBtn.addEventListener('click', () => {
@@ -349,7 +438,7 @@ Let's make this a daily habit for better fluency!`;
                     } else { 
                         showNotice('クリップボードにテキストがありません'); 
                     }
-                } else {
+                } else { 
                     showNotice('手動でテキストエリアにペーストしてください');
                 }
             } catch (err) {
@@ -373,7 +462,7 @@ Let's make this a daily habit for better fluency!`;
             setTimeout(() => {
                 toast.style.opacity = '0';
                 setTimeout(() => toast.remove(), 300);
-            }, 2000);
+            }, 2200);
         }
 
         function formatTime(seconds) {
@@ -424,20 +513,48 @@ Let's make this a daily habit for better fluency!`;
                 div.dataset.index = idx;
 
                 const flexDiv = document.createElement('div');
-                flexDiv.className = 'flex items-start space-x-3';
+                flexDiv.className = 'flex items-start justify-between space-x-3';
+
+                const leftDiv = document.createElement('div');
+                leftDiv.className = 'flex items-start space-x-3 flex-1 min-w-0';
 
                 const numSpan = document.createElement('span');
                 numSpan.className = 'text-xs font-semibold text-slate-300 font-mono mt-0.5 select-none w-5 shrink-0 text-right';
                 numSpan.textContent = `${idx + 1}`;
 
                 const engP = document.createElement('p');
-                engP.className = 'text-sm sm:text-base font-medium text-slate-800 leading-relaxed break-words flex-1';
+                engP.className = `text-sm sm:text-base font-medium text-slate-800 leading-relaxed break-words flex-1 sentence-text ${isMasked ? 'masked' : ''}`;
                 engP.textContent = sent;
 
-                flexDiv.appendChild(numSpan);
-                flexDiv.appendChild(engP);
+                leftDiv.appendChild(numSpan);
+                leftDiv.appendChild(engP);
+                flexDiv.appendChild(leftDiv);
+
+                // 個別チラ見せ（確認）ボタン（目隠し時のみ有効）
+                const peekBtn = document.createElement('button');
+                peekBtn.className = 'peek-btn shrink-0 text-slate-400 hover:text-blue-600 active:text-blue-800 p-1 rounded-md text-xs transition';
+                peekBtn.title = '英文を確認する';
+                peekBtn.innerHTML = '👁️';
+                peekBtn.style.display = isMasked ? 'inline-flex' : 'none';
+
+                // チラ見せボタン押下時は再生を起こさず英文の表示/非表示をトグル
+                peekBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (engP.classList.contains('revealed')) {
+                        engP.classList.remove('revealed');
+                        peekBtn.classList.remove('text-blue-600');
+                        peekBtn.classList.add('text-slate-400');
+                    } else {
+                        engP.classList.add('revealed');
+                        peekBtn.classList.add('text-blue-600');
+                        peekBtn.classList.remove('text-slate-400');
+                    }
+                });
+
+                flexDiv.appendChild(peekBtn);
                 div.appendChild(flexDiv);
 
+                // カード本体をクリックするとその文を再生
                 div.addEventListener('click', () => {
                     currentIndex = idx;
                     playSentence(currentIndex);
@@ -449,6 +566,7 @@ Let's make this a daily habit for better fluency!`;
             currentPositionLabel.textContent = `1 / ${sentences.length}`;
             updateProgress();
             updateTimerDisplay();
+            updateMaskModeUI();
 
             preloadAhead(0);
         }
@@ -578,17 +696,21 @@ Let's make this a daily habit for better fluency!`;
 
             preloadAhead(currentIndex + 1);
 
+            const thisRequestId = ++playRequestId;
             const textToSpeak = sentences[currentIndex];
             const currentRate = parseFloat(rateSelect.value);
 
             const audioSrc = await fetchExternalAudio(textToSpeak, currentRate);
 
-            if (audioSrc && isPlaying) {
+            // リクエストIDが一致しない場合は新しい再生が始まっているため破棄
+            if (thisRequestId !== playRequestId || !isPlaying) return;
+
+            if (audioSrc) {
                 audioPlayer.src = audioSrc;
                 audioPlayer.playbackRate = 1.0;
                 
                 audioPlayer.onended = () => {
-                    if (!isPlaying) return;
+                    if (!isPlaying || thisRequestId !== playRequestId) return;
                     if (currentIndex < sentences.length - 1) {
                         playSentence(currentIndex + 1);
                     } else {
@@ -598,37 +720,43 @@ Let's make this a daily habit for better fluency!`;
                 };
 
                 audioPlayer.onerror = () => {
-                    playWithWebSpeech(textToSpeak, currentRate);
+                    if (thisRequestId === playRequestId) {
+                        playWithWebSpeech(textToSpeak, currentRate, thisRequestId);
+                    }
                 };
 
                 audioPlayer.play().then(() => {
-                    startTimer();
-                    updateMediaSession(textToSpeak);
+                    if (thisRequestId === playRequestId) {
+                        startTimer();
+                        updateMediaSessionMetadata(textToSpeak);
+                    }
                 }).catch(() => {
-                    playWithWebSpeech(textToSpeak, currentRate);
+                    if (thisRequestId === playRequestId) {
+                        playWithWebSpeech(textToSpeak, currentRate, thisRequestId);
+                    }
                 });
 
-            } else if (isPlaying) {
-                playWithWebSpeech(textToSpeak, currentRate);
+            } else {
+                playWithWebSpeech(textToSpeak, currentRate, thisRequestId);
             }
         }
 
-        function playWithWebSpeech(textToSpeak, rate) {
+        function playWithWebSpeech(textToSpeak, rate, reqId) {
             window.speechSynthesis.cancel();
 
             setTimeout(() => {
-                if (!isPlaying) return;
+                if (!isPlaying || reqId !== playRequestId) return;
 
                 const currentUtterance = new SpeechSynthesisUtterance(textToSpeak);
                 currentUtterance.lang = 'en-US';
                 currentUtterance.rate = rate;
 
                 currentUtterance.onstart = () => {
-                    startTimer();
+                    if (reqId === playRequestId) startTimer();
                 };
 
                 currentUtterance.onend = () => {
-                    if (!isPlaying) return;
+                    if (!isPlaying || reqId !== playRequestId) return;
                     if (currentIndex < sentences.length - 1) {
                         playSentence(currentIndex + 1);
                     } else {
@@ -638,33 +766,37 @@ Let's make this a daily habit for better fluency!`;
                 };
 
                 currentUtterance.onerror = () => {
-                    stopAudio();
+                    if (reqId === playRequestId) stopAudio();
                 };
 
                 window.speechSynthesis.speak(currentUtterance);
-                updateMediaSession(textToSpeak);
+                updateMediaSessionMetadata(textToSpeak);
             }, 50);
         }
 
-        function updateMediaSession(text) {
+        function initMediaSessionHandlers() {
+            if (!('mediaSession' in navigator)) return;
+
+            navigator.mediaSession.setActionHandler('play', () => {
+                if (!isPlaying) playSentence(currentIndex);
+            });
+            navigator.mediaSession.setActionHandler('pause', () => {
+                stopAudio();
+            });
+            navigator.mediaSession.setActionHandler('previoustrack', () => {
+                if (currentIndex > 0) playSentence(currentIndex - 1);
+            });
+            navigator.mediaSession.setActionHandler('nexttrack', () => {
+                if (currentIndex < sentences.length - 1) playSentence(currentIndex + 1);
+            });
+        }
+
+        function updateMediaSessionMetadata(text) {
             if ('mediaSession' in navigator) {
                 navigator.mediaSession.metadata = new MediaMetadata({
                     title: `文 ${currentIndex + 1} / ${sentences.length}`,
                     artist: 'Listening Study',
                     album: text,
-                });
-
-                navigator.mediaSession.setActionHandler('play', () => {
-                    if (!isPlaying) playSentence(currentIndex);
-                });
-                navigator.mediaSession.setActionHandler('pause', () => {
-                    stopAudio();
-                });
-                navigator.mediaSession.setActionHandler('previoustrack', () => {
-                    if (currentIndex > 0) playSentence(currentIndex - 1);
-                });
-                navigator.mediaSession.setActionHandler('nexttrack', () => {
-                    if (currentIndex < sentences.length - 1) playSentence(currentIndex + 1);
                 });
             }
         }
@@ -716,6 +848,7 @@ Let's make this a daily habit for better fluency!`;
         }
 
         function stopAudio() {
+            playRequestId++;
             if (playTimeAccumulator > 0) {
                 savePlayTimeToLocalStorage(playTimeAccumulator);
                 playTimeAccumulator = 0;
