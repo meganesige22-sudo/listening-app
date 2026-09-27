@@ -19,7 +19,7 @@
         }
 
         .sentence-card {
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
         }
         
         .sentence-card.active {
@@ -28,19 +28,10 @@
             box-shadow: 0 4px 12px -2px rgba(59, 130, 246, 0.15);
         }
 
-        /* 英文目隠し（ブラインド）効果用スタイル */
+        /* 英文非表示スタイル：領域・高さ・折り返しは完全に維持し、文字だけを不可視化 */
         .sentence-text.masked {
-            filter: blur(8px);
-            opacity: 0.18;
+            visibility: hidden;
             user-select: none;
-            transition: filter 0.2s ease, opacity 0.2s ease;
-        }
-
-        /* 個別で開いた英文のスタイル */
-        .sentence-text.revealed {
-            filter: none !important;
-            opacity: 1 !important;
-            user-select: text !important;
         }
 
         #subtitles-container::-webkit-scrollbar {
@@ -137,7 +128,7 @@
                 <span id="current-position-label" class="bg-slate-200/70 text-slate-600 font-mono px-2 py-0.5 rounded-full text-[11px]">0 / 0</span>
             </div>
 
-            <div id="subtitles-container" class="p-3 space-y-2.5 overflow-y-auto flex-1 scroll-smooth">
+            <div id="subtitles-container" class="p-3 space-y-2.5 overflow-y-auto flex-1">
                 <div class="text-center text-slate-400 py-12 text-sm">
                     読み込み中...
                 </div>
@@ -161,8 +152,8 @@
             <!-- メインコントローラー -->
             <div class="flex items-center justify-between px-2 pt-1">
                 
-                <!-- 英文 目隠しトグルボタン（親指で押しやすい左側に配置） -->
-                <button id="toggle-mask-btn" class="p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:text-blue-600 active:scale-95 transition flex flex-col items-center bg-slate-50 min-w-[48px]" title="英文の表示・目隠し">
+                <!-- 英文 表示/非表示切り替えボタン（幅・高さを固定） -->
+                <button id="toggle-mask-btn" class="w-12 h-12 rounded-xl border border-slate-200 text-slate-600 active:scale-95 transition flex flex-col items-center justify-center bg-slate-50 shrink-0" title="英文の表示・非表示">
                     <span id="mask-icon" class="text-lg leading-none">👁️</span>
                     <span id="mask-label" class="text-[9px] font-medium text-slate-500 mt-1">隠す</span>
                 </button>
@@ -189,7 +180,7 @@
                 </div>
 
                 <!-- 音声選択 & 再生速度 -->
-                <div class="flex items-center space-x-2">
+                <div class="flex items-center space-x-2 shrink-0">
                     <div class="flex flex-col items-center">
                         <select id="rate-select" class="bg-slate-100 border border-slate-200 rounded-lg text-xs p-1.5 font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500">
                             <option value="0.5">0.5x</option>
@@ -239,7 +230,7 @@ Let's make this a daily habit for better fluency!`;
         const limitProgressBar = document.getElementById('limit-progress-bar');
         const limitNoticeText = document.getElementById('limit-notice-text');
 
-        // 目隠し（ブラインド）機能関連の参照
+        // 非表示切り替え関連
         const toggleMaskBtn = document.getElementById('toggle-mask-btn');
         const maskIcon = document.getElementById('mask-icon');
         const maskLabel = document.getElementById('mask-label');
@@ -268,9 +259,9 @@ Let's make this a daily habit for better fluency!`;
         let currentIndex = 0;
         let isPlaying = false;
         let audioCache = {};
-        let playRequestId = 0; // 重複再生ガード
+        let playRequestId = 0;
 
-        // 目隠しモード状態（localStorageに保存）
+        // 非表示モード状態（初期値：通常表示）
         let isMasked = localStorage.getItem('listening_mask_mode') === 'true';
 
         // タイマー・時間計測用
@@ -278,11 +269,14 @@ Let's make this a daily habit for better fluency!`;
         let sentenceStartTime = 0;
         let elapsedBeforeCurrent = 0;
 
-        // 再生時間計測の蓄積管理（秒単位の加算）
+        // 再生時間計測の蓄積管理
         let playTimeAccumulator = 0;
 
-        // 目隠しモードUIの同期
+        // 非表示モードUIの更新（スクロール位置やカードの幅・高さを1pxも動かさない）
         function updateMaskModeUI() {
+            // スクロール位置を保持
+            const currentScroll = subtitlesContainer.scrollTop;
+
             if (isMasked) {
                 maskIcon.textContent = '🙈';
                 maskLabel.textContent = '表示';
@@ -295,23 +289,18 @@ Let's make this a daily habit for better fluency!`;
                 toggleMaskBtn.classList.add('bg-slate-50', 'text-slate-600', 'border-slate-200');
             }
 
-            // 全ての文カードに対してマスククラスを適用/解除
+            // 全ての英文テキストに masked クラスを適用/解除
             const textElements = subtitlesContainer.querySelectorAll('.sentence-text');
             textElements.forEach(el => {
                 if (isMasked) {
                     el.classList.add('masked');
-                    el.classList.remove('revealed');
                 } else {
                     el.classList.remove('masked');
-                    el.classList.remove('revealed');
                 }
             });
 
-            // カード内の個別トグルボタンの表示制御
-            const peekButtons = subtitlesContainer.querySelectorAll('.peek-btn');
-            peekButtons.forEach(btn => {
-                btn.style.display = isMasked ? 'inline-flex' : 'none';
-            });
+            // スクロール位置を再固定
+            subtitlesContainer.scrollTop = currentScroll;
         }
 
         toggleMaskBtn.addEventListener('click', () => {
@@ -337,13 +326,11 @@ Let's make this a daily habit for better fluency!`;
             monthlyStatsModal.classList.add('hidden');
         });
 
-        // 定期的に再生時間をLocal Storageへ保存する機構（上限18時間を超えないように制御）
         setInterval(() => {
             if (isPlaying) {
                 const key = getCurrentYearMonthKey();
                 const currentTotalSeconds = parseInt(localStorage.getItem(key) || '0', 10);
                 
-                // すでに18時間に達している場合は再生時間を加算せず一時停止する
                 if (currentTotalSeconds + playTimeAccumulator >= MAX_PLAY_SECONDS) {
                     stopAudio();
                     showNotice('今月の再生時間が上限の18時間に達しました');
@@ -394,7 +381,6 @@ Let's make this a daily habit for better fluency!`;
             monthlyHoursDisplay.textContent = `${hours} / 18.00 時間`;
             monthlyDetailedDisplay.textContent = `（合計: ${minutes}分 / 上限: ${maxMinutes}分）`;
 
-            // プログレスバーの割合を計算（最大18時間）
             const percentage = Math.min(100, (totalSeconds / MAX_PLAY_SECONDS) * 100);
             limitProgressBar.style.width = `${percentage}%`;
 
@@ -493,10 +479,7 @@ Let's make this a daily habit for better fluency!`;
                 div.dataset.index = idx;
 
                 const flexDiv = document.createElement('div');
-                flexDiv.className = 'flex items-start justify-between space-x-3';
-
-                const leftDiv = document.createElement('div');
-                leftDiv.className = 'flex items-start space-x-3 flex-1 min-w-0';
+                flexDiv.className = 'flex items-start space-x-3';
 
                 const numSpan = document.createElement('span');
                 numSpan.className = 'text-xs font-semibold text-slate-300 font-mono mt-0.5 select-none w-5 shrink-0 text-right';
@@ -506,35 +489,10 @@ Let's make this a daily habit for better fluency!`;
                 engP.className = `text-sm sm:text-base font-medium text-slate-800 leading-relaxed break-words flex-1 sentence-text ${isMasked ? 'masked' : ''}`;
                 engP.textContent = sent;
 
-                leftDiv.appendChild(numSpan);
-                leftDiv.appendChild(engP);
-                flexDiv.appendChild(leftDiv);
-
-                // 個別チラ見せ（確認）ボタン（目隠し時のみ有効）
-                const peekBtn = document.createElement('button');
-                peekBtn.className = 'peek-btn shrink-0 text-slate-400 hover:text-blue-600 active:text-blue-800 p-1 rounded-md text-xs transition';
-                peekBtn.title = '英文を確認する';
-                peekBtn.innerHTML = '👁️';
-                peekBtn.style.display = isMasked ? 'inline-flex' : 'none';
-
-                // チラ見せボタン押下時は再生を起こさず英文の表示/非表示をトグル
-                peekBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    if (engP.classList.contains('revealed')) {
-                        engP.classList.remove('revealed');
-                        peekBtn.classList.remove('text-blue-600');
-                        peekBtn.classList.add('text-slate-400');
-                    } else {
-                        engP.classList.add('revealed');
-                        peekBtn.classList.add('text-blue-600');
-                        peekBtn.classList.remove('text-slate-400');
-                    }
-                });
-
-                flexDiv.appendChild(peekBtn);
+                flexDiv.appendChild(numSpan);
+                flexDiv.appendChild(engP);
                 div.appendChild(flexDiv);
 
-                // カード本体をクリックするとその文を再生
                 div.addEventListener('click', () => {
                     currentIndex = idx;
                     playSentence(currentIndex);
@@ -653,7 +611,6 @@ Let's make this a daily habit for better fluency!`;
         }
 
         async function playSentence(index) {
-            // 再生開始前に上限（18時間）に達していないかチェック
             const key = getCurrentYearMonthKey();
             const currentTotalSeconds = parseInt(localStorage.getItem(key) || '0', 10);
             if (currentTotalSeconds >= MAX_PLAY_SECONDS) {
@@ -682,7 +639,6 @@ Let's make this a daily habit for better fluency!`;
 
             const audioSrc = await fetchExternalAudio(textToSpeak, currentRate);
 
-            // リクエストIDが一致しない場合は新しい再生が始まっているため破棄
             if (thisRequestId !== playRequestId || !isPlaying) return;
 
             if (audioSrc) {
@@ -781,25 +737,18 @@ Let's make this a daily habit for better fluency!`;
             }
         }
 
-        function scrollContainerToActiveItem(activeItem) {
-            // 画面の自動移動（スクロール）を行わないよう固定
-            return;
-        }
-
         function updateHighlight() {
             const items = subtitlesContainer.querySelectorAll('.sentence-card');
-            let activeElement = null;
 
             items.forEach((item, idx) => {
                 if (idx === currentIndex) {
                     item.classList.add('active');
-                    activeElement = item;
                 } else {
                     item.classList.remove('active');
                 }
             });
 
-            // 自動スクロールは行わず、表示の変更のみ反映
+            // 画面スクロールは一切行わず、表示値のみ更新
             currentPositionLabel.textContent = `${currentIndex + 1} / ${sentences.length}`;
             updateProgress();
             updateTimerDisplay();
